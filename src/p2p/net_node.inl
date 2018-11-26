@@ -56,6 +56,9 @@
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "net.p2p"
 
+#define MLOG_TUD_NEW_CONNECTION(x) MCINFO("tud.connection", context << x)
+#define MLOG_TUD_CLOSE_CONNECTION(x) MCINFO("tud.connection", context << x)
+
 #define NET_MAKE_IP(b1,b2,b3,b4)  ((LPARAM)(((DWORD)(b1)<<24)+((DWORD)(b2)<<16)+((DWORD)(b3)<<8)+((DWORD)(b4))))
 
 #define MIN_WANTED_SEED_NODES 12
@@ -1802,7 +1805,7 @@ namespace nodetool
   template<class t_payload_net_handler>
   void node_server<t_payload_net_handler>::on_connection_new(p2p_connection_context& context)
   {
-    MINFO("["<< epee::net_utils::print_connection_context(context) << "] NEW CONNECTION");
+    MLOG_TUD_NEW_CONNECTION("["<< epee::net_utils::print_connection_context(context) << "] NEW CONNECTION");
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
@@ -1817,7 +1820,7 @@ namespace nodetool
 
     m_payload_handler.on_connection_close(context);
 
-    MINFO("["<< epee::net_utils::print_connection_context(context) << "] CLOSE CONNECTION");
+    MLOG_TUD_CLOSE_CONNECTION("["<< epee::net_utils::print_connection_context(context) << "] CLOSE CONNECTION");
   }
 
   template<class t_payload_net_handler>
