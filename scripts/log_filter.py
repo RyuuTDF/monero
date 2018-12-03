@@ -2,11 +2,12 @@
 import sys
 import re
 
-IP_REGEX = "[0-9]{2,3}.[0-9]{2,3}.[0-9]{2,3}.[0-9]{2,3}"
-CONNECT_REGEX = "\\bCONNECT-BEP " + IP_REGEX
-DISCONNECT_REGEX = "\\bDISCONNECT-BEP " + IP_REGEX
-NOTIFY_REGEX = "\\bNOTIFY-BEP " + IP_REGEX
-REASON_REGEX = "" + IP_REGEX
+IP_REGEX = "\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{1,5}"
+CONNECT_REGEX = "NEW CONNECTION"
+DISCONNECT_REGEX = "CLOSE CONNECTION"
+# TODO: Get the regular expression for both a notification and the reason.
+NOTIFY_REGEX = "NOTIFY_NEW_TRANSACTIONS"
+REASON_REGEX = "TODO"
 TIMESTAMP_REGEX = "201[8-9]-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}"
 
 
@@ -56,10 +57,10 @@ def parse_file(input_file=""):
                 timestamp = timestamp_match.group(0)
 
             # Retrieve the ip address from the given line.
-            ip_address_match = re.search(IP_REGEX, line, re.s)
+            ip_address_match = re.search(IP_REGEX, line, re.S)
             ip_address = "N/A"
             if ip_address_match:
-                ip_address = ip_address_match.group(0)
+                ip_address = ip_address_match.group(0)[1:]
                 addresses.add(ip_address)
 
             # Retrieve past connections for the ip address or instantiate empty if there are none found yet.
@@ -75,16 +76,17 @@ def parse_file(input_file=""):
             elif disconnect_match:
                 ip_connections["disconnect"].append(timestamp)
             elif reason_match:
-                reason = "TODO"
+                # TODO: Get the correct message from the reason match.
+                reason = "-"
                 ip_connections["reason"].append(reason)
 
             # When the current line is corresponding to a notification, add it to the notification list.
             elif notify_match:
-                ip_address = notify_match.group(0).split(" ")[1]
                 notify.append((ip_address, timestamp))
 
     log_file.close()
-    connect = [(value[0], connection) for value in connect.items() for connection in _map_connect(value[1])]
+    connect = [(value[0], connection[0], connection[1], connection[2]) for value in connect.items()
+               for connection in _map_connect(value[1])]
     return addresses, connect, notify
 
 
@@ -155,7 +157,7 @@ def write_file(output_file="", csv_description="", elements=None, is_int=False):
                 file.write(element + ",")
             else:
                 for value in element:
-                    file.write(value[1] + ",")
+                    file.write(value + ",")
             file.write("\n")
     file.close()
 
