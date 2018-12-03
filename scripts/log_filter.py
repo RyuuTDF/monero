@@ -50,6 +50,9 @@ def parse_file(input_file=""):
             notify_match = re.search(NOTIFY_REGEX, line, re.S)
             reason_match = re.search(REASON_REGEX, line, re.S)
 
+            if not(connect_match or disconnect_match or reason_match or notify_match):
+                continue
+
             # Retrieve the timestamp from the given line.
             timestamp_match = re.search(TIMESTAMP_REGEX, line, re.S)
             timestamp = "N/A"
