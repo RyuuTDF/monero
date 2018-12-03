@@ -75,14 +75,14 @@ namespace epee { namespace net_utils
   std::string print_connection_context(const connection_context_base& ctx)
   {
     std::stringstream ss;
-	time_t time = ctx.m_last_recv;
+	time_t lastActivity = ctx.m_last_recv;
 	if(ctx.m_last_recv < ctx.m_last_send){
-		time = ctx.m_last_send;
+		lastActivity = ctx.m_last_send;
 	}
-	if(!time){
-		time = ctx.m_started;
+	if(!lastActivity){
+		lastActivity = ctx.m_started;
 	}
-    ss << ctx.m_remote_address.str() << " " << epee::string_tools::get_str_from_guid_a(ctx.m_connection_id) << (ctx.m_is_income ? " INC":" OUT") << " " << ctx.m_started << " " << time;
+    ss << ctx.m_remote_address.str() << " " << epee::string_tools::get_str_from_guid_a(ctx.m_connection_id) << (ctx.m_is_income ? " INC":" OUT") << " " << ctx.m_started << " " << lastActivity;
     return ss.str();
   }
 

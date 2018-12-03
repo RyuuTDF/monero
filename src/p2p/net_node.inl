@@ -56,8 +56,8 @@
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "net.p2p"
 
-#define MLOG_TUD_NEW_CONNECTION(x) MCINFO("tud.connection", context << x)
-#define MLOG_TUD_CLOSE_CONNECTION(x) MCINFO("tud.connection", context << x)
+#define MLOG_TUD_NEW_CONNECTION(x) CLOG(INFO, "tud.connection") << x
+#define MLOG_TUD_CLOSE_CONNECTION(x) CLOG(INFO, "tud.connection") << x
 
 #define NET_MAKE_IP(b1,b2,b3,b4)  ((LPARAM)(((DWORD)(b1)<<24)+((DWORD)(b2)<<16)+((DWORD)(b3)<<8)+((DWORD)(b4))))
 
