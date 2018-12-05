@@ -56,8 +56,9 @@
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "net.p2p"
 
-#define MLOG_TUD_NEW_CONNECTION(x) CLOG(INFO, "tud.connection") << x
-#define MLOG_TUD_CLOSE_CONNECTION(x) CLOG(INFO, "tud.connection") << x
+#define MLOG_TUD(context,cat,x) CLOG(INFO, cat) << "["<< epee::net_utils::print_connection_context(context) << "] " << x
+#define MLOG_TUD_CONNECTION(context,x) MLOG_TUD(context, "tud.connection", x)
+#define MLOG_TUD_REASON(context,x) MLOG_TUD(context, "tud.reason", x)
 
 #define NET_MAKE_IP(b1,b2,b3,b4)  ((LPARAM)(((DWORD)(b1)<<24)+((DWORD)(b2)<<16)+((DWORD)(b3)<<8)+((DWORD)(b4))))
 
@@ -733,19 +734,20 @@ namespace nodetool
 
       if(code < 0)
       {
-        LOG_WARNING_CC(context, "COMMAND_HANDSHAKE invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
+		//MLOG_TUD_NEW_CONNECTION("["<< epee::net_utils::print_connection_context(context) << "] NEW CONNECTION");
+        MLOG_TUD_REASON(context, "COMMAND_HANDSHAKE invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
         return;
       }
 
       if(rsp.node_data.network_id != m_network_id)
       {
-        LOG_WARNING_CC(context, "COMMAND_HANDSHAKE Failed, wrong network!  (" << epee::string_tools::get_str_from_guid_a(rsp.node_data.network_id) << "), closing connection.");
+        MLOG_TUD_REASON(context, "COMMAND_HANDSHAKE Failed, wrong network!  (" << epee::string_tools::get_str_from_guid_a(rsp.node_data.network_id) << "), closing connection.");
         return;
       }
 
       if(!handle_remote_peerlist(rsp.local_peerlist_new, rsp.node_data.local_time, context))
       {
-        LOG_WARNING_CC(context, "COMMAND_HANDSHAKE: failed to handle_remote_peerlist(...), closing connection.");
+        MLOG_TUD_REASON(context, "COMMAND_HANDSHAKE: failed to handle_remote_peerlist(...), closing connection.");
         add_host_fail(context.m_remote_address);
         return;
       }
@@ -754,7 +756,7 @@ namespace nodetool
       {
         if(!m_payload_handler.process_payload_sync_data(rsp.payload_data, context, true))
         {
-          LOG_WARNING_CC(context, "COMMAND_HANDSHAKE invoked, but process_payload_sync_data returned false, dropping connection.");
+          MLOG_TUD_REASON(context, "COMMAND_HANDSHAKE invoked, but process_payload_sync_data returned false, dropping connection.");
           hsh_result = false;
           return;
         }
@@ -764,14 +766,14 @@ namespace nodetool
 
         if(rsp.node_data.peer_id == m_config.m_peer_id)
         {
-          LOG_DEBUG_CC(context, "Connection to self detected, dropping connection");
+          MLOG_TUD_REASON(context, "Connection to self detected, dropping connection");
           hsh_result = false;
           return;
         }
-        LOG_DEBUG_CC(context, " COMMAND_HANDSHAKE INVOKED OK");
+        LOG_DEBUG_CC(context, "COMMAND_HANDSHAKE INVOKED OK");
       }else
       {
-        LOG_DEBUG_CC(context, " COMMAND_HANDSHAKE(AND CLOSE) INVOKED OK");
+        MLOG_TUD_REASON(context, "COMMAND_HANDSHAKE(AND CLOSE) INVOKED OK");
       }
     }, P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT);
 
@@ -782,7 +784,7 @@ namespace nodetool
 
     if(!hsh_result)
     {
-      LOG_WARNING_CC(context_, "COMMAND_HANDSHAKE Failed");
+      MLOG_TUD_REASON(context_, "COMMAND_HANDSHAKE Failed");
       m_net_server.get_config_object().close(context_.m_connection_id);
     }
     else
@@ -808,7 +810,7 @@ namespace nodetool
       context.m_in_timedsync = false;
       if(code < 0)
       {
-        LOG_WARNING_CC(context, "COMMAND_TIMED_SYNC invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
+        MLOG_TUD_REASON(context, "COMMAND_TIMED_SYNC invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
         return;
       }
 
@@ -1599,7 +1601,7 @@ namespace nodetool
       {
         if(code <= 0)
         {
-          LOG_WARNING_CC(ping_context, "Failed to invoke COMMAND_PING to " << address.str() << "(" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
+          MLOG_TUD_REASON(ping_context, "Failed to invoke COMMAND_PING to " << address.str() << "(" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
           return;
         }
 
@@ -1642,7 +1644,7 @@ namespace nodetool
       {  
         if(code < 0)
         {
-          LOG_WARNING_CC(context_, "COMMAND_REQUEST_SUPPORT_FLAGS invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
+          MLOG_TUD_REASON(context_, "COMMAND_REQUEST_SUPPORT_FLAGS invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
           return;
         }
         
@@ -1805,7 +1807,7 @@ namespace nodetool
   template<class t_payload_net_handler>
   void node_server<t_payload_net_handler>::on_connection_new(p2p_connection_context& context)
   {
-    MLOG_TUD_NEW_CONNECTION("["<< epee::net_utils::print_connection_context(context) << "] NEW CONNECTION");
+    MLOG_TUD_CONNECTION(context, "NEW CONNECTION");
   }
   //-----------------------------------------------------------------------------------
   template<class t_payload_net_handler>
@@ -1820,7 +1822,7 @@ namespace nodetool
 
     m_payload_handler.on_connection_close(context);
 
-    MLOG_TUD_CLOSE_CONNECTION("["<< epee::net_utils::print_connection_context(context) << "] CLOSE CONNECTION");
+    MLOG_TUD_CONNECTION(context, "CLOSE CONNECTION");
   }
 
   template<class t_payload_net_handler>
