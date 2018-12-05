@@ -734,7 +734,6 @@ namespace nodetool
 
       if(code < 0)
       {
-		//MLOG_TUD_NEW_CONNECTION("["<< epee::net_utils::print_connection_context(context) << "] NEW CONNECTION");
         MLOG_TUD_REASON(context, "COMMAND_HANDSHAKE invoke failed. (" << code <<  ", " << epee::levin::get_err_descr(code) << ")");
         return;
       }
