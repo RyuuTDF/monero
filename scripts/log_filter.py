@@ -194,5 +194,5 @@ def main():
     write_file(notify_file, "ip-address,timestamp,", notify, False)
     write_file(connect_file, "ip-address,connection-timestamp,disconnection-timestamp,reason,", connect, False)
 
-
-main()
+if __name__ == "__main__":
+    main()
