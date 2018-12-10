@@ -103,4 +103,7 @@ local.properties
 .texlipse
 .idea/
 
+__pycache__
+data/
+
 /testnet

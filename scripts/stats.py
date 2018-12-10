@@ -1,18 +1,22 @@
-import sys
 import csv
-import numpy as np
-from ipinfo import get_ip_info, update_tor_exit_nodes
+import math
+import sys
 from datetime import datetime
+
+import matplotlib.pyplot as plt
+from ipinfo import get_ip_info, update_tor_exit_nodes
+
 
 def connection_types(connects, ipinfos):
     types = {}
     for (ip, _, _, _) in connects:
-        type = ipinfos[ip.split(":")[0]]["category"]
-        if type not in types:
-            types[type] = 0
-        types[type] += 1
+        typ = ipinfos[ip.split(":")[0]]["category"]
+        if typ not in types:
+            types[typ] = 0
+        types[typ] += 1
 
     return types
+
 
 def connection_length(connects):
     connection_lengths = {}
@@ -28,6 +32,36 @@ def connection_length(connects):
             print("The connection of " + ip + " does not have a proper connection/disconnection time")
 
     return connection_lengths
+
+
+def plot_connection_length(connects):
+    connection_lengths = connection_length(connects)
+    connection_lengths = [0 if connection.total_seconds() == 0 else math.log(connection.total_seconds(), 10) for
+                          connections in connection_lengths.values() for connection in connections]
+    plt.hist(connection_lengths, bins=100)
+    plt.xlabel("Connection duration (log(s, 10))")
+    plt.ylabel("Number of connections")
+    plt.title("Histogram of connection duration")
+    plt.savefig("conn_dur_hist.png")
+    plt.close()
+
+
+def plot_notification(notifies):
+    notifications = {}
+    print(notifies[0])
+    for (ip) in notifies:
+        if ":" in ip:
+            ip = ip.split(":")[0]
+        if ip not in notifications:
+            notifications[ip] = 0
+        notifications[ip] += 1
+    print(len(notifications.keys()))
+    plt.hist([math.log(notification, 10) for notification in notifications.values()], bins=100)
+    plt.xlabel("Number of notifications (log_10)")
+    plt.ylabel("Number of ip addresses")
+    plt.title("Histogram of amount of notifications per ip address")
+    plt.savefig("notif_hist.png")
+    plt.close()
 
 
 def read_log_filter(addresses_file, connect_file, notify_file):
@@ -52,13 +86,15 @@ def read_log_filter(addresses_file, connect_file, notify_file):
             reasons.append(row[3])
         connects = list(zip(ips, connections, disconnections, reasons))
 
-    # TODO: finish this
     with open(notify_file, "r") as file:
         csv_read = csv.reader(file)
         next(csv_read)
-        notifies = file.readlines()
+        notifies = []
+        for row in csv_read:
+            notifies.append(row[0])
 
-    return (addresses, connects, notifies)
+    return addresses, connects, notifies
+
 
 def main():
     """
@@ -73,20 +109,14 @@ def main():
     update_tor_exit_nodes(tor_ip_file)
 
     (addresses, connects, notifies) = read_log_filter(addresses_file, connect_file, notify_file)
-
     ipinfos = get_ip_info(addresses, monero_ip_file, tor_ip_file)
 
     conn_types = connection_types(connects, ipinfos)
     print("Connection types: ")
     print(conn_types)
 
-    connection_lengths = connection_length(connects)
-    print("Connection lengths: ")
-    print(connection_lengths)
+    plot_connection_length(connects)
+    plot_notification(notifies)
 
-    print("Average connection length: ")
-    all_connection_lengths = np.array(sum([x for x in connection_lengths.values()], []))
-    avg_conn_length = np.mean(all_connection_lengths)
-    print(avg_conn_length)
 
 main()
