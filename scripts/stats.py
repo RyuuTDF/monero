@@ -4,6 +4,7 @@ import sys
 from datetime import datetime
 
 import matplotlib.pyplot as plt
+import pandas as pd
 from ipinfo import get_ip_info, update_tor_exit_nodes
 
 
@@ -48,19 +49,51 @@ def plot_connection_length(connects):
 
 def plot_notification(notifies):
     notifications = {}
-    print(notifies[0])
     for (ip) in notifies:
         if ":" in ip:
             ip = ip.split(":")[0]
         if ip not in notifications:
             notifications[ip] = 0
         notifications[ip] += 1
-    print(len(notifications.keys()))
     plt.hist([math.log(notification, 10) for notification in notifications.values()], bins=100)
     plt.xlabel("Number of notifications (log_10)")
     plt.ylabel("Number of ip addresses")
     plt.title("Histogram of amount of notifications per ip address")
     plt.savefig("notif_hist.png")
+    plt.close()
+
+
+def plot_connection_timeline(connects):
+    start_date = datetime.max
+    end_date = datetime.min
+    for (_, connection, disconnection, _) in connects:
+        try:
+            conn_time = datetime.strptime(connection, "%Y-%m-%d %H:%M:%S.%f")
+            disc_time = datetime.strptime(disconnection, "%Y-%m-%d %H:%M:%S.%f")
+            start_date = conn_time if start_date > conn_time else start_date
+            end_date = disc_time if end_date < disc_time else end_date
+        except:
+            pass
+
+    timestamps = pd.date_range(start_date, end_date, freq="H")
+    counter = {}
+    for (_, con, dc, _) in connects:
+        for timestamp in timestamps:
+            if timestamp not in counter:
+                counter[timestamp] = 0
+            try:
+                conn_time = datetime.strptime(con, "%Y-%m-%d %H:%M:%S.%f")
+                disc_time = datetime.strptime(dc, "%Y-%m-%d %H:%M:%S.%f")
+                if conn_time < timestamp < disc_time:
+                    counter[timestamp] += 1
+            except:
+                pass
+
+    plt.plot(counter.keys(), counter.values())
+    plt.xlabel("Date")
+    plt.ylabel("Number of connections")
+    plt.title("Connections over time")
+    plt.savefig("conn_time.png")
     plt.close()
 
 
@@ -117,6 +150,7 @@ def main():
 
     plot_connection_length(connects)
     plot_notification(notifies)
+    plot_connection_timeline(connects)
 
 
 main()
