@@ -1,10 +1,16 @@
 import csv
 import math
 import sys
-from datetime import datetime
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+import folium
+import json
+import pycountry
+import branca
+
+from datetime import datetime
 from ipinfo import get_ip_info, update_tor_exit_nodes
 
 
@@ -89,7 +95,7 @@ def plot_connection_timeline(connects):
             except:
                 pass
 
-    plt.plot(counter.keys(), counter.values())
+    plt.plot(list(counter.keys()), list(counter.values()))
     plt.xlabel("Date")
     plt.ylabel("Number of connections")
     plt.title("Connections over time")
@@ -127,6 +133,67 @@ def read_log_filter(addresses_file, connect_file, notify_file):
             notifies.append(row[0])
 
     return addresses, connects, notifies
+
+
+def plot_location_data(addresses, ipinfos):
+    locs = {}
+
+    m = folium.Map(location=[20,0], tiles="Mapbox Bright", zoom_start=2)
+    circles = []
+
+    for address in addresses:
+        info = ipinfos[address.split(":")[0]]
+        if "country" in info and "loc" in info and info["category"] == None:
+            loc = info["country"]
+            if loc not in locs:
+                locs[loc] = 0
+
+            t = info["loc"].split(",")
+            circles.append(folium.Circle(
+                location=[float(t[0]), float(t[1])],
+                radius=500
+            ))
+            locs[loc] += 1
+
+    worldmap = "worldmap.json";
+    world_data = json.load(open(worldmap))
+
+    colormap = branca.colormap.linear.YlGn_09.scale(0,2500)
+
+    def get_proper_colormap(feature):
+        land = pycountry.countries.get(alpha_3=feature["id"])
+        try:
+            alpha2 = land.alpha_2
+        except:
+            print("Alpha 3 not recognized!: " + feature["id"])
+            return colormap(0)
+
+        if alpha2 in locs:
+            return colormap(locs[alpha2])
+        else:
+            return colormap(0)
+
+    folium.GeoJson(world_data, style_function=lambda feature: {
+        'fillColor': get_proper_colormap(feature),
+        'color': 'black',
+        'weight': 1,
+        'dashArray': '5, 5',
+        'fillOpacity': 0.9,
+    }).add_to(m)
+
+    for circle in circles:
+        circle.add_to(m)
+
+    m.save("conn_origins.html")
+
+    N = np.arange(len(locs.keys()))
+    plt.figure(figsize=(30,5))
+    plt.bar(N, locs.values())
+    plt.xticks(N, locs.keys())
+    plt.xlabel("Country")
+    plt.ylabel("Number of connections")
+    plt.title("Origins of connections")
+    plt.savefig("conn_origins.png")
 
 
 def main():
