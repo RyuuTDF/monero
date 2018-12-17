@@ -43,10 +43,11 @@ def connection_length(connects):
 
 def plot_connection_length(connects):
     connection_lengths = connection_length(connects)
-    connection_lengths = [0 if connection.total_seconds() == 0 else math.log(connection.total_seconds(), 10) for
+    connection_lengths = [0 if connection.total_seconds() <= 0 else connection.total_seconds() for
                           connections in connection_lengths.values() for connection in connections]
-    plt.hist(connection_lengths, bins=100)
-    plt.xlabel("Connection duration (log(s, 10))")
+    plt.hist(connection_lengths, bins=np.logspace(np.log10(0.01),np.log10(max(connection_lengths)), 100))
+    plt.xscale('log')
+    plt.xlabel("Connection duration (s)")
     plt.ylabel("Number of connections")
     plt.title("Histogram of connection duration")
     plt.savefig("conn_dur_hist.png")
@@ -61,7 +62,9 @@ def plot_notification(notifies):
         if ip not in notifications:
             notifications[ip] = 0
         notifications[ip] += 1
-    plt.hist([math.log(notification, 10) for notification in notifications.values()], bins=100)
+    to_plot = [notification for notification in notifications.values()]
+    plt.hist(to_plot, bins=np.logspace(np.log10(1),np.log10(max(to_plot)), 100))
+    plt.xscale('log')
     plt.xlabel("Number of notifications (log_10)")
     plt.ylabel("Number of ip addresses")
     plt.title("Histogram of amount of notifications per ip address")
@@ -72,30 +75,37 @@ def plot_notification(notifies):
 def plot_connection_timeline(connects):
     start_date = datetime.max
     end_date = datetime.min
+
+    events = []
+
     for (_, connection, disconnection, _) in connects:
         try:
             conn_time = datetime.strptime(connection, "%Y-%m-%d %H:%M:%S.%f")
-            disc_time = datetime.strptime(disconnection, "%Y-%m-%d %H:%M:%S.%f")
+            events.append([conn_time, 1])
             start_date = conn_time if start_date > conn_time else start_date
+        except:
+            pass
+
+        try:
+            disc_time = datetime.strptime(disconnection, "%Y-%m-%d %H:%M:%S.%f")
+            events.append([disc_time, -1])
             end_date = disc_time if end_date < disc_time else end_date
         except:
             pass
 
-    timestamps = pd.date_range(start_date, end_date, freq="H")
-    counter = {}
-    for (_, con, dc, _) in connects:
-        for timestamp in timestamps:
-            if timestamp not in counter:
-                counter[timestamp] = 0
-            try:
-                conn_time = datetime.strptime(con, "%Y-%m-%d %H:%M:%S.%f")
-                disc_time = datetime.strptime(dc, "%Y-%m-%d %H:%M:%S.%f")
-                if conn_time < timestamp < disc_time:
-                    counter[timestamp] += 1
-            except:
-                pass
+    events.sort(key=lambda e: e[0])
 
-    plt.plot(list(counter.keys()), list(counter.values()))
+    times = []
+    values = [0]
+
+    while events:
+        e = events[0]
+        times.append(e[0])
+        values.append(values[-1] + e[1])
+        del events[0]
+
+    plt.figure(figsize=(15,10))
+    plt.plot(times, values[1:])
     plt.xlabel("Date")
     plt.ylabel("Number of connections")
     plt.title("Connections over time")
@@ -218,6 +228,8 @@ def main():
     plot_connection_length(connects)
     plot_notification(notifies)
     plot_connection_timeline(connects)
+
+    plot_location_data(addresses, ipinfos)
 
 
 main()

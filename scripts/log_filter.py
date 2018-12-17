@@ -3,6 +3,8 @@ import sys
 import re
 
 IP_REGEX = "\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{1,5}"
+BLOCK_REGEX = "NOTIFY_NEW_FLUFFY_BLOCK"
+BLOCK_HEIGHT_REGEX = "[0-9]{6,9}"
 CONNECT_REGEX = "NEW CONNECTION"
 DISCONNECT_REGEX = "CLOSE CONNECTION"
 # TODO: Get the regular expression for both a notification and the reason.
@@ -42,15 +44,17 @@ def parse_file(input_file=""):
     connect = dict()
     addresses = set()
     notify = list()
+    blocks = list()
     with open(input_file, "r") as log_file:
         for line in log_file:
             # Match to check which type of log message the given line is.
+            block_match = re.search(BLOCK_REGEX, line, re.S)
             connect_match = re.search(CONNECT_REGEX, line, re.S)
             disconnect_match = re.search(DISCONNECT_REGEX, line, re.S)
             notify_match = re.search(NOTIFY_REGEX, line, re.S)
             reason_match = re.search(REASON_REGEX, line, re.S)
 
-            if not(connect_match or disconnect_match or reason_match or notify_match):
+            if not(block_match or connect_match or disconnect_match or reason_match or notify_match):
                 continue
 
             # Retrieve the timestamp from the given line.
@@ -74,7 +78,11 @@ def parse_file(input_file=""):
                 connect[ip_address] = ip_connections
 
             # When the current line is corresponding to a connection, add it to the respective list.
-            if connect_match:
+            if block_match:
+                block_height_match = re.search(BLOCK_HEIGHT_REGEX, line, re.S)
+                block_height = block_height_match.group(0)
+                blocks.append((ip_address, timestamp, block_height))
+            elif connect_match:
                 ip_connections["connect"].append(timestamp)
             elif disconnect_match:
                 ip_connections["disconnect"].append(timestamp)
@@ -90,7 +98,7 @@ def parse_file(input_file=""):
     log_file.close()
     connect = [(value[0], connection[0], connection[1], connection[2]) for value in connect.items()
                for connection in _map_connect(value[1])]
-    return addresses, connect, notify
+    return addresses, connect, notify, blocks
 
 
 def _map_connect(connections):
@@ -174,6 +182,7 @@ def main():
     - addresses_path:   The path to the file to which the addresses CSV is output.
     - connect_path:     The path to the file to which the connection CSV is output.
     - notify_path:      The path to the file to which the notification CSV is output.
+    - block_path:      The path to the file to which the block_height CSV is output.
 
     The addresses csv is formatted as follows:
     ip-address,
@@ -189,10 +198,13 @@ def main():
     addresses_file = sys.argv[2]
     connect_file = sys.argv[3]
     notify_file = sys.argv[4]
-    (addresses, connect, notify) = parse_file(input_file)
+    block_file = sys.argv[5]
+    (addresses, connect, notify, block) = parse_file(input_file)
     write_file(addresses_file, "ip-address,", addresses, True)
     write_file(notify_file, "ip-address,timestamp,", notify, False)
     write_file(connect_file, "ip-address,connection-timestamp,disconnection-timestamp,reason,", connect, False)
+    write_file(block_file, "ip-address,timestamp,block-height,", block, False)
+
 
 if __name__ == "__main__":
     main()
