@@ -81,10 +81,14 @@ def plot_connection_timeline(connects):
     for (_, connection, disconnection, _) in connects:
         try:
             conn_time = datetime.strptime(connection, "%Y-%m-%d %H:%M:%S.%f")
-            disc_time = datetime.strptime(disconnection, "%Y-%m-%d %H:%M:%S.%f")
             events.append([conn_time, 1])
-            events.append([disc_time, -1])
             start_date = conn_time if start_date > conn_time else start_date
+        except:
+            pass
+
+        try:
+            disc_time = datetime.strptime(disconnection, "%Y-%m-%d %H:%M:%S.%f")
+            events.append([disc_time, -1])
             end_date = disc_time if end_date < disc_time else end_date
         except:
             pass
