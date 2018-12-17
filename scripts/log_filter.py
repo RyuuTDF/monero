@@ -203,7 +203,7 @@ def main():
     write_file(addresses_file, "ip-address,", addresses, True)
     write_file(notify_file, "ip-address,timestamp,", notify, False)
     write_file(connect_file, "ip-address,connection-timestamp,disconnection-timestamp,reason,", connect, False)
-    write_file(block_file, "ip-address,timestamp,block-height", block, False)
+    write_file(block_file, "ip-address,timestamp,block-height,", block, False)
 
 
 if __name__ == "__main__":
