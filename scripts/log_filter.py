@@ -3,13 +3,13 @@ import sys
 import re
 
 IP_REGEX = "\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}:[0-9]{1,5}"
+GUID_REGEX = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 BLOCK_REGEX = "NOTIFY_NEW_FLUFFY_BLOCK"
 BLOCK_HEIGHT_REGEX = "[0-9]{6,9}"
 CONNECT_REGEX = "NEW CONNECTION"
 DISCONNECT_REGEX = "CLOSE CONNECTION"
-# TODO: Get the regular expression for both a notification and the reason.
+REASON_REGEX = "tud.reason"
 NOTIFY_REGEX = "NOTIFY_NEW_TRANSACTIONS"
-REASON_REGEX = "TODO"
 TIMESTAMP_REGEX = "201[8-9]-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}"
 
 
@@ -54,7 +54,7 @@ def parse_file(input_file=""):
             notify_match = re.search(NOTIFY_REGEX, line, re.S)
             reason_match = re.search(REASON_REGEX, line, re.S)
 
-            if not(block_match or connect_match or disconnect_match or reason_match or notify_match):
+            if not(block_match or connect_match or disconnect_match or notify_match or reason_match):
                 continue
 
             # Retrieve the timestamp from the given line.
@@ -70,11 +70,20 @@ def parse_file(input_file=""):
                 ip_address = ip_address_match.group(0)[1:]
                 addresses.add(ip_address)
 
+            # Retrieve the GUID from the given line.
+            guid_match = re.search(GUID_REGEX, line, re.S)
+            guid = "N/A"
+            if guid_match:
+                guid = guid_match.group(0)
+
             # Retrieve past connections for the ip address or instantiate empty if there are none found yet.
-            ip_connections = {"connect": list(), "disconnect": list(), "reason": list()}
-            try:
+            guid_pair = ("-", "-", "-")
+            ip_connections = {guid: guid_pair}
+            if ip_address in connect:
                 ip_connections = connect[ip_address]
-            except KeyError:
+                if guid in ip_connections:
+                    guid_pair = ip_connections[guid]
+            else:
                 connect[ip_address] = ip_connections
 
             # When the current line is corresponding to a connection, add it to the respective list.
@@ -83,69 +92,22 @@ def parse_file(input_file=""):
                 block_height = block_height_match.group(0)
                 blocks.append((ip_address, timestamp, block_height))
             elif connect_match:
-                ip_connections["connect"].append(timestamp)
+                ip_connections[guid] = (timestamp, guid_pair[1], guid_pair[2])
             elif disconnect_match:
-                ip_connections["disconnect"].append(timestamp)
+                ip_connections[guid] = (guid_pair[0], timestamp, guid_pair[2])
             elif reason_match:
-                # TODO: Get the correct message from the reason match.
-                reason = "-"
-                ip_connections["reason"].append(reason)
+                ip_connections[guid] = (guid_pair[0], guid_pair[1], line.split("] ")[1].strip('\n'))
 
             # When the current line is corresponding to a notification, add it to the notification list.
             elif notify_match:
                 notify.append((ip_address, timestamp))
 
     log_file.close()
-    connect = [(value[0], connection[0], connection[1], connection[2]) for value in connect.items()
-               for connection in _map_connect(value[1])]
+    connect = [(ip, connection_pair[0], connection_pair[1], connection_pair[2])
+               for ip, connection_dict in connect.items() for connection_pair in connection_dict.values()
+               if connection_pair[0] != "-" and connection_pair[1] != "-"]
+
     return addresses, connect, notify, blocks
-
-
-def _map_connect(connections):
-    """
-    Map a dictionary of connections, disconnections and reason to a list of pairs of connection, disconnection and
-    reason.
-
-    The connections list should look as follows:
-        {   "connect":  [   TIMESTAMP_1,
-                            TIMESTAMP_2,
-                            ...
-                        ],
-            "disconnect":   [   TIMESTAMP_3,
-                                TIMESTAMP_4,
-                                ...
-                            ],
-            "reason":   [   REASON_1,
-                            REASON_2,
-                            ...
-                        ]
-        }
-
-    The output list will be formatted as follows:
-        [   (TIMESTAMP_1, TIMESTAMP_3, REASON_1),
-            (TIMESTAMP_2, TIMESTAMP_4, REASON_2)
-        ]
-
-    Note that if the list sizes of the input are not of equal length, that incomplete pairs get inserted into the
-    output, with "-" as placeholder for the missing input.
-
-    :param connections: dictionary in the format described above
-    :return:            output list in the format described above
-    """
-    connect = connections["connect"]
-    disconnect = connections["disconnect"]
-    reason = connections["reason"]
-    resulting_list = list()
-    for index in range(max(len(connect), len(disconnect), len(reason))):
-        con = dis = reas = "-"
-        if index < len(connect):
-            con = connect[index]
-        if index < len(disconnect):
-            dis = disconnect[index]
-        if index < len(reason):
-            reas = reason[index]
-        resulting_list.append((con, dis, reas))
-    return resulting_list
 
 
 def write_file(output_file="", csv_description="", elements=None, is_int=False):
@@ -177,21 +139,21 @@ def main():
     """
     Parse a given Monero log file, retrieving all notifications as well as all connections made.
 
-    Usage: python3 log_filter.py input_path addresses_path connect_path notify_path
+    Usage: python3 log_filter.py input_path addresses_path connect_path notify_path block_path
     - input_path:       The path to the log file to be parsed.
     - addresses_path:   The path to the file to which the addresses CSV is output.
     - connect_path:     The path to the file to which the connection CSV is output.
     - notify_path:      The path to the file to which the notification CSV is output.
-    - block_path:      The path to the file to which the block_height CSV is output.
+    - block_path:       The path to the file to which the block_height CSV is output.
 
     The addresses csv is formatted as follows:
     ip-address,
 
     The connection csv is formatted as follows:
-    ip-address,connection-timestamp,disconnection-timestamp,reason
+    ip-address,connection-timestamp,disconnection-timestamp,reason,
 
     The notification csv is formatted as follows:
-    timestamp,ip-address
+    timestamp,ip-address,
     :return: None
     """
     input_file = sys.argv[1]
