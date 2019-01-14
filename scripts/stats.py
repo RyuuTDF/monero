@@ -145,7 +145,7 @@ def read_log_filter(addresses_file, connect_file, notify_file):
     return addresses, connects, notifies
 
 
-def plot_location_data(addresses, ipinfos):
+def plot_location_data(addresses, ipinfos, worldmap):
     locs = {}
 
     m = folium.Map(location=[20,0], tiles="Mapbox Bright", zoom_start=2)
@@ -165,7 +165,6 @@ def plot_location_data(addresses, ipinfos):
             ))
             locs[loc] += 1
 
-    worldmap = "worldmap.json";
     world_data = json.load(open(worldmap))
 
     colormap = branca.colormap.linear.YlGn_09.scale(0,2500)
@@ -215,11 +214,14 @@ def main():
     notify_file = sys.argv[3]
     monero_ip_file = sys.argv[4]
     tor_ip_file = sys.argv[5]
-
+    ip_info_file = sys.argv[6]
+    worldmap = "worldmap.json"
+    if len(sys.argv) > 7:
+        worldmap = sys.argv[7]
     update_tor_exit_nodes(tor_ip_file)
 
     (addresses, connects, notifies) = read_log_filter(addresses_file, connect_file, notify_file)
-    ipinfos = get_ip_info(addresses, monero_ip_file, tor_ip_file)
+    ipinfos = get_ip_info(addresses, monero_ip_file, tor_ip_file, ip_info_file)
 
     conn_types = connection_types(connects, ipinfos)
     print("Connection types: ")
@@ -229,7 +231,7 @@ def main():
     plot_notification(notifies)
     plot_connection_timeline(connects)
 
-    plot_location_data(addresses, ipinfos)
+    plot_location_data(addresses, ipinfos, worldmap)
 
 
 main()

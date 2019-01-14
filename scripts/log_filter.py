@@ -13,7 +13,7 @@ NOTIFY_REGEX = "NOTIFY_NEW_TRANSACTIONS"
 TIMESTAMP_REGEX = "201[8-9]-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}"
 
 
-def parse_file(input_file=""):
+def parse_file(input_file="", filter_lines="no_filter"):
     """
     Parse the given log file on both notifications and connections.
 
@@ -47,11 +47,13 @@ def parse_file(input_file=""):
     blocks = list()
     with open(input_file, "r") as log_file:
         for line in log_file:
+            if (filter_lines != "no_filter" and filter_lines not in line):
+                continue;
             # Match to check which type of log message the given line is.
+            notify_match = re.search(NOTIFY_REGEX, line, re.S)
             block_match = re.search(BLOCK_REGEX, line, re.S)
             connect_match = re.search(CONNECT_REGEX, line, re.S)
             disconnect_match = re.search(DISCONNECT_REGEX, line, re.S)
-            notify_match = re.search(NOTIFY_REGEX, line, re.S)
             reason_match = re.search(REASON_REGEX, line, re.S)
 
             if not(block_match or connect_match or disconnect_match or notify_match or reason_match):
@@ -97,7 +99,7 @@ def parse_file(input_file=""):
                 ip_connections[guid] = (guid_pair[0], timestamp, guid_pair[2])
             elif reason_match:
                 ip_connections[guid] = (guid_pair[0], guid_pair[1], line.split("] ")[1].strip('\n'))
-
+            
             # When the current line is corresponding to a notification, add it to the notification list.
             elif notify_match:
                 notify.append((ip_address, timestamp))
@@ -161,7 +163,10 @@ def main():
     connect_file = sys.argv[3]
     notify_file = sys.argv[4]
     block_file = sys.argv[5]
-    (addresses, connect, notify, block) = parse_file(input_file)
+    filter_lines = "no_filter"
+    if len(sys.argv) > 6:
+        filter_lines = sys.argv[6]
+    (addresses, connect, notify, block) = parse_file(input_file, filter_lines)
     write_file(addresses_file, "ip-address,", addresses, True)
     write_file(notify_file, "ip-address,timestamp,", notify, False)
     write_file(connect_file, "ip-address,connection-timestamp,disconnection-timestamp,reason,", connect, False)
