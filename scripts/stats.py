@@ -30,9 +30,9 @@ def connection_types(connects, ipinfos):
     return types
 
 
-def connection_length(connects):
+def connection_length(connects, reason_filter):
     connection_lengths = {}
-    for (ip, connection, disconnection, _) in connects:
+    for (ip, connection, disconnection, reason) in connects:
         try:
             conn_time = datetime.strptime(connection, "%Y-%m-%d %H:%M:%S.%f")
             disc_time = datetime.strptime(disconnection, "%Y-%m-%d %H:%M:%S.%f")
@@ -46,8 +46,8 @@ def connection_length(connects):
     return connection_lengths
 
 
-def plot_connection_length(connects):
-    connection_lengths = connection_length(connects)
+def plot_connection_length(connects, reason_filter):
+    connection_lengths = connection_length(connects, reason_filter)
     connection_lengths = [0 if connection.total_seconds() <= 0 else connection.total_seconds() for
                           connections in connection_lengths.values() for connection in connections]
     plt.hist(connection_lengths, bins=np.logspace(np.log10(0.01),np.log10(max(connection_lengths)), 100))
@@ -77,13 +77,13 @@ def plot_notification(notifies):
     plt.close()
 
 
-def plot_connection_timeline(connects):
+def plot_connection_timeline(connects, reason_filter):
     start_date = datetime.max
     end_date = datetime.min
 
     events = []
 
-    for (_, connection, disconnection, _) in connects:
+    for (_, connection, disconnection, reason) in connects:
         try:
             conn_time = datetime.strptime(connection, "%Y-%m-%d %H:%M:%S.%f")
             events.append([conn_time, 1])
@@ -257,6 +257,8 @@ def main():
     if len(sys.argv) > 8:
         worldmap = sys.argv[8]
     update_tor_exit_nodes(tor_ip_file)
+    
+    reason_filter = None
 
     (addresses, connects, notifies, blocks) = read_log_filter(addresses_file, connect_file, notify_file, block_file)
     ipinfos = get_ip_info(addresses, monero_ip_file, tor_ip_file, ip_info_file)
@@ -264,12 +266,14 @@ def main():
     conn_types = connection_types(connects, ipinfos)
     print("Connection types: ")
     print(conn_types)
+    
+    with open("conn_types.txt", "w+") as file:
+        file.write(str(conn_types) + "\n");
 
-    plot_connection_length(connects)
+    plot_connection_length(connects, reason_filter)
     plot_notification(notifies)
-    plot_connection_timeline(connects)
+    plot_connection_timeline(connects, reason_filter)
     plot_blocks_redundancy(blocks)
-
     plot_location_data(addresses, ipinfos, worldmap)
 
 
