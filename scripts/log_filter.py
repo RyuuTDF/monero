@@ -110,8 +110,11 @@ def parse_file(input_file="", filter_lines="no_filter"):
     connect = [(ip, connection_pair[0], connection_pair[1], connection_pair[2])
                 if connection_pair[0] != "-" and connection_pair[1] != "-"
                 else (ip, connection_pair[0], timestamp, connection_pair[2])
+                if connection_pair[0] != "-"
+                else ()
                 for ip, connection_dict in connect.items() for connection_pair in connection_dict.values()
                 ]
+    connect = [c for c in connect if c != ()]
 
     return addresses, connect, notify, blocks
 
