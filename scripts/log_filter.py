@@ -45,6 +45,7 @@ def parse_file(input_file="", filter_lines="no_filter"):
     addresses = set()
     notify = list()
     blocks = list()
+
     with open(input_file, "r") as log_file:
         for line in log_file:
             if (filter_lines != "no_filter" and filter_lines not in line):
@@ -99,15 +100,18 @@ def parse_file(input_file="", filter_lines="no_filter"):
                 ip_connections[guid] = (guid_pair[0], timestamp, guid_pair[2])
             elif reason_match:
                 ip_connections[guid] = (guid_pair[0], guid_pair[1], line.split("] ")[1].strip('\n'))
-            
+
             # When the current line is corresponding to a notification, add it to the notification list.
             elif notify_match:
                 notify.append((ip_address, timestamp))
 
     log_file.close()
+
     connect = [(ip, connection_pair[0], connection_pair[1], connection_pair[2])
-               for ip, connection_dict in connect.items() for connection_pair in connection_dict.values()
-               if connection_pair[0] != "-" and connection_pair[1] != "-"]
+                if connection_pair[0] != "-" and connection_pair[1] != "-"
+                else (ip, connection_pair[0], timestamp, connection_pair[2])
+                for ip, connection_dict in connect.items() for connection_pair in connection_dict.values()
+                ]
 
     return addresses, connect, notify, blocks
 
