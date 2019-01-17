@@ -15,12 +15,17 @@ from ipinfo import get_ip_info, update_tor_exit_nodes
 
 
 def connection_types(connects, ipinfos):
+    ips = set()
+
     types = {}
     for (ip, _, _, _) in connects:
-        typ = ipinfos[ip.split(":")[0]]["category"]
-        if typ not in types:
-            types[typ] = 0
-        types[typ] += 1
+        ipsplit = ip.split(":")[0]
+        if ipsplit not in ips:
+            typ = ipinfos[ipsplit]["category"]
+            if typ not in types:
+                types[typ] = 0
+            types[typ] += 1
+            ips.add(ipsplit)
 
     return types
 
@@ -263,6 +268,7 @@ def main():
     plot_connection_length(connects)
     plot_notification(notifies)
     plot_connection_timeline(connects)
+    plot_blocks_redundancy(blocks)
 
     plot_location_data(addresses, ipinfos, worldmap)
 
