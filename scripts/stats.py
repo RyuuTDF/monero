@@ -15,12 +15,17 @@ from ipinfo import get_ip_info, update_tor_exit_nodes
 
 
 def connection_types(connects, ipinfos):
+    ips = set()
+
     types = {}
     for (ip, _, _, _) in connects:
-        typ = ipinfos[ip.split(":")[0]]["category"]
-        if typ not in types:
-            types[typ] = 0
-        types[typ] += 1
+        ipsplit = ip.split(":")[0]
+        if ipsplit not in ips:
+            typ = ipinfos[ipsplit]["category"]
+            if typ not in types:
+                types[typ] = 0
+            types[typ] += 1
+            ips.add(ipsplit)
 
     return types
 
@@ -113,7 +118,7 @@ def plot_connection_timeline(connects, reason_filter):
     plt.close()
 
 
-def read_log_filter(addresses_file, connect_file, notify_file):
+def read_log_filter(addresses_file, connect_file, notify_file, block_file):
     with open(addresses_file, "r") as file:
         csv_read = csv.reader(file)
         next(csv_read)
@@ -142,7 +147,23 @@ def read_log_filter(addresses_file, connect_file, notify_file):
         for row in csv_read:
             notifies.append(row[0])
 
-    return addresses, connects, notifies
+    blocks = read_blocks(block_file)
+
+    return addresses, connects, notifies, blocks
+
+
+def read_blocks(block_file):
+    with open(block_file, "r") as file:
+        csv_read = csv.reader(file)
+        ips = []
+        timestamps = []
+        block_heights = []
+        next(csv_read)
+        for row in csv_read:
+            ips.append(row[0])
+            timestamps.append(row[1])
+            block_heights.append(row[2])
+        return list(zip(ips, timestamps, block_heights))
 
 
 def plot_location_data(addresses, ipinfos, worldmap):
@@ -205,6 +226,22 @@ def plot_location_data(addresses, ipinfos, worldmap):
     plt.savefig("conn_origins.png")
 
 
+def plot_blocks_redundancy(blocks):
+    block_heights = {}
+    for block in blocks:
+        if block[2] not in block_heights:
+            block_heights[block[2]] = 0
+        block_heights[block[2]] += 1
+
+    plt.figure(figsize=(15,10))
+    plt.hist(list(block_heights.values()), bins=np.arange(0, 1 + max(list(block_heights.values()))))
+    plt.xlabel("Redundancy")
+    plt.ylabel("Frequency")
+    plt.title("Block redundancy")
+    plt.savefig("block_redundancy.png")
+    plt.close()
+
+
 def main():
     """
     Given the result files from log_filter, calculate useful statistics
@@ -212,17 +249,18 @@ def main():
     addresses_file = sys.argv[1]
     connect_file = sys.argv[2]
     notify_file = sys.argv[3]
-    monero_ip_file = sys.argv[4]
-    tor_ip_file = sys.argv[5]
-    ip_info_file = sys.argv[6]
+    block_file = sys.argv[4]
+    monero_ip_file = sys.argv[5]
+    tor_ip_file = sys.argv[6]
+    ip_info_file = sys.argv[7]
     worldmap = "worldmap.json"
-    if len(sys.argv) > 7:
-        worldmap = sys.argv[7]
+    if len(sys.argv) > 8:
+        worldmap = sys.argv[8]
     update_tor_exit_nodes(tor_ip_file)
     
     reason_filter = None
 
-    (addresses, connects, notifies) = read_log_filter(addresses_file, connect_file, notify_file)
+    (addresses, connects, notifies, blocks) = read_log_filter(addresses_file, connect_file, notify_file, block_file)
     ipinfos = get_ip_info(addresses, monero_ip_file, tor_ip_file, ip_info_file)
 
     conn_types = connection_types(connects, ipinfos)
@@ -235,7 +273,7 @@ def main():
     plot_connection_length(connects, reason_filter)
     plot_notification(notifies)
     plot_connection_timeline(connects, reason_filter)
-
+    plot_blocks_redundancy(blocks)
     plot_location_data(addresses, ipinfos, worldmap)
 
 
