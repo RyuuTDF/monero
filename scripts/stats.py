@@ -50,7 +50,7 @@ def plot_connection_length(connects, reason_filter):
     connection_lengths = connection_length(connects, reason_filter)
     connection_lengths = [0 if connection.total_seconds() <= 0 else connection.total_seconds() for
                           connections in connection_lengths.values() for connection in connections]
-    plt.hist(connection_lengths, bins=np.logspace(np.log10(0.01),np.log10(max(connection_lengths)), 100))
+    plt.hist(connection_lengths, bins=np.logspace(np.log10(0.01), np.log10(max(connection_lengths)), 100))
     plt.xscale('log')
     plt.xlabel("Connection duration (s)")
     plt.ylabel("Number of connections")
@@ -68,7 +68,7 @@ def plot_notification(notifies):
             notifications[ip] = 0
         notifications[ip] += 1
     to_plot = [notification for notification in notifications.values()]
-    plt.hist(to_plot, bins=np.logspace(np.log10(1),np.log10(max(to_plot)), 100))
+    plt.hist(to_plot, bins=np.logspace(np.log10(1), np.log10(max(to_plot)), 100))
     plt.xscale('log')
     plt.xlabel("Number of notifications (log_10)")
     plt.ylabel("Number of ip addresses")
@@ -109,7 +109,7 @@ def plot_connection_timeline(connects, reason_filter):
         values.append(values[-1] + e[1])
         del events[0]
 
-    plt.figure(figsize=(15,10))
+    plt.figure(figsize=(15, 10))
     plt.plot(times, values[1:])
     plt.xlabel("Date")
     plt.ylabel("Number of connections")
@@ -169,7 +169,7 @@ def read_blocks(block_file):
 def plot_location_data(addresses, ipinfos, worldmap):
     locs = {}
 
-    m = folium.Map(location=[20,0], tiles="Mapbox Bright", zoom_start=2)
+    m = folium.Map(location=[20, 0], tiles="Mapbox Bright", zoom_start=2)
     circles = []
 
     for address in addresses:
@@ -188,7 +188,7 @@ def plot_location_data(addresses, ipinfos, worldmap):
 
     world_data = json.load(open(worldmap))
 
-    colormap = branca.colormap.linear.YlGn_09.scale(0,2500)
+    colormap = branca.colormap.linear.YlGn_09.scale(0, 2500)
 
     def get_proper_colormap(feature):
         land = pycountry.countries.get(alpha_3=feature["id"])
@@ -217,7 +217,7 @@ def plot_location_data(addresses, ipinfos, worldmap):
     m.save("conn_origins.html")
 
     N = np.arange(len(locs.keys()))
-    plt.figure(figsize=(30,5))
+    plt.figure(figsize=(30, 5))
     plt.bar(N, locs.values())
     plt.xticks(N, locs.keys())
     plt.xlabel("Country")
@@ -233,7 +233,7 @@ def plot_blocks_redundancy(blocks):
             block_heights[block[2]] = 0
         block_heights[block[2]] += 1
 
-    plt.figure(figsize=(15,10))
+    plt.figure(figsize=(15, 10))
     plt.hist(list(block_heights.values()), bins=np.arange(0, 1 + max(list(block_heights.values()))))
     plt.xlabel("Redundancy")
     plt.ylabel("Frequency")
@@ -257,7 +257,7 @@ def main():
     if len(sys.argv) > 8:
         worldmap = sys.argv[8]
     update_tor_exit_nodes(tor_ip_file)
-    
+
     reason_filter = None
 
     (addresses, connects, notifies, blocks) = read_log_filter(addresses_file, connect_file, notify_file, block_file)
@@ -266,7 +266,7 @@ def main():
     conn_types = connection_types(connects, ipinfos)
     print("Connection types: ")
     print(conn_types)
-    
+
     with open("conn_types.txt", "w+") as file:
         file.write(str(conn_types) + "\n");
 

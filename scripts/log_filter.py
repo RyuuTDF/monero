@@ -13,7 +13,7 @@ NOTIFY_REGEX = "NOTIFY_NEW_TRANSACTIONS"
 TIMESTAMP_REGEX = "201[8-9]-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}"
 
 
-def parse_file(input_file="", filter_lines="no_filter"):
+def parse_file(input_file="", line_filter=None):
     """
     Parse the given log file on both notifications and connections.
 
@@ -39,17 +39,19 @@ def parse_file(input_file="", filter_lines="no_filter"):
             ...
         ]
     :param input_file:  The file path where the log file is located. (default "")
+    :param line_filter: Optional filter. If the passed filter is not present in a line, it is not used by this script.
     :return:            A tuple, containing the ip addresses set, the connection and the notification list
     """
     connect = dict()
     addresses = set()
     notify = list()
     blocks = list()
+    timestamp = None
 
     with open(input_file, "r") as log_file:
         for line in log_file:
-            if (filter_lines != "no_filter" and filter_lines not in line):
-                continue;
+            if line_filter and line_filter not in line:
+                continue
             # Match to check which type of log message the given line is.
             notify_match = re.search(NOTIFY_REGEX, line, re.S)
             block_match = re.search(BLOCK_REGEX, line, re.S)
@@ -57,7 +59,7 @@ def parse_file(input_file="", filter_lines="no_filter"):
             disconnect_match = re.search(DISCONNECT_REGEX, line, re.S)
             reason_match = re.search(REASON_REGEX, line, re.S)
 
-            if not(block_match or connect_match or disconnect_match or notify_match or reason_match):
+            if not (block_match or connect_match or disconnect_match or notify_match or reason_match):
                 continue
 
             # Retrieve the timestamp from the given line.
@@ -108,12 +110,12 @@ def parse_file(input_file="", filter_lines="no_filter"):
     log_file.close()
 
     connect = [(ip, connection_pair[0], connection_pair[1], connection_pair[2])
-                if connection_pair[0] != "-" and connection_pair[1] != "-"
-                else (ip, connection_pair[0], timestamp, connection_pair[2])
-                if connection_pair[0] != "-"
-                else ()
-                for ip, connection_dict in connect.items() for connection_pair in connection_dict.values()
-                ]
+               if connection_pair[0] != "-" and connection_pair[1] != "-"
+               else (ip, connection_pair[0], timestamp, connection_pair[2])
+    if connection_pair[0] != "-"
+    else ()
+               for ip, connection_dict in connect.items() for connection_pair in connection_dict.values()
+               ]
     connect = [c for c in connect if c != ()]
 
     return addresses, connect, notify, blocks
@@ -129,17 +131,15 @@ def write_file(output_file="", csv_description="", elements=None, is_int=False):
     :param is_int:          Indicate whether the elements are integer or pair
     :return:                None
     """
-    if not elements:
-        elements = list()
     with open(output_file, "w+") as file:
         if csv_description:
             file.write(csv_description + "\n")
         for element in elements:
             if is_int:
-                file.write(element + ",")
+                file.write(str(element) + ",")
             else:
                 for value in element:
-                    file.write(value + ",")
+                    file.write(str(value) + ",")
             file.write("\n")
     file.close()
 
@@ -148,12 +148,13 @@ def main():
     """
     Parse a given Monero log file, retrieving all notifications as well as all connections made.
 
-    Usage: python3 log_filter.py input_path addresses_path connect_path notify_path block_path
+    Usage: python3 log_filter.py input_path addresses_path connect_path notify_path block_path (line_filter)
     - input_path:       The path to the log file to be parsed.
     - addresses_path:   The path to the file to which the addresses CSV is output.
     - connect_path:     The path to the file to which the connection CSV is output.
     - notify_path:      The path to the file to which the notification CSV is output.
     - block_path:       The path to the file to which the block_height CSV is output.
+    - line_filter       Optional filter. If the passed filter is not present in a line, it is not used by this script.
 
     The addresses csv is formatted as follows:
     ip-address,
@@ -163,6 +164,10 @@ def main():
 
     The notification csv is formatted as follows:
     timestamp,ip-address,
+
+    The block csv is formatted as follows:
+    ip-address,timestamp,block-height
+
     :return: None
     """
     input_file = sys.argv[1]
@@ -170,10 +175,8 @@ def main():
     connect_file = sys.argv[3]
     notify_file = sys.argv[4]
     block_file = sys.argv[5]
-    filter_lines = "no_filter"
-    if len(sys.argv) > 6:
-        filter_lines = sys.argv[6]
-    (addresses, connect, notify, block) = parse_file(input_file, filter_lines)
+    line_filter = sys.argv[6] if len(sys.argv) > 6 else None
+    (addresses, connect, notify, block) = parse_file(input_file, line_filter)
     write_file(addresses_file, "ip-address,", addresses, True)
     write_file(notify_file, "ip-address,timestamp,", notify, False)
     write_file(connect_file, "ip-address,connection-timestamp,disconnection-timestamp,reason,", connect, False)
