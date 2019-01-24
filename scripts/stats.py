@@ -1,9 +1,7 @@
 import csv
-import math
 import sys
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import numpy as np
 import folium
 import json
@@ -30,7 +28,13 @@ def connection_types(connects, ipinfos):
     return types
 
 
-def connection_length(connects, reason_filter):
+def connection_length(connects):
+    """
+    Calculates the duration of all connections made.
+
+    :param connects     List containing connect and disconnect notifications.
+    :return: None
+    """
     connection_lengths = {}
     for (ip, connection, disconnection, reason) in connects:
         try:
@@ -46,8 +50,14 @@ def connection_length(connects, reason_filter):
     return connection_lengths
 
 
-def plot_connection_length(connects, reason_filter):
-    connection_lengths = connection_length(connects, reason_filter)
+def plot_connection_length(connects):
+    """
+    Creates and saves the Connection Duration plot.
+
+    :param connects     List containing connect and disconnect notifications.
+    :return: None
+    """
+    connection_lengths = connection_length(connects)
     connection_lengths = [0 if connection.total_seconds() <= 0 else connection.total_seconds() for
                           connections in connection_lengths.values() for connection in connections]
     plt.hist(connection_lengths, bins=np.logspace(np.log10(0.01), np.log10(max(connection_lengths)), 100))
@@ -60,6 +70,12 @@ def plot_connection_length(connects, reason_filter):
 
 
 def plot_notification(notifies):
+    """
+    Creates and saves the Notifications per IP plot.
+
+    :param notifies  List containing the notifications.
+    :return: None
+    """
     notifications = {}
     for (ip) in notifies:
         if ":" in ip:
@@ -77,7 +93,14 @@ def plot_notification(notifies):
     plt.close()
 
 
-def plot_connection_timeline(connects, reason_filter):
+def plot_connection_timeline(connects):
+    """
+    Creates and saves the Connections over Time plot.
+
+    :param connects         List containing connect and disconnect notifications.
+    :return: None
+    """
+
     start_date = datetime.max
     end_date = datetime.min
 
@@ -119,13 +142,46 @@ def plot_connection_timeline(connects, reason_filter):
 
 
 def read_log_filter(addresses_file, connect_file, notify_file, block_file):
+    """
+    Turns the files from log_filter.py into usable lists.
+
+    :param addresses_file   Name of the ip adresses file.
+    :param connect_file     Name of the connections file.
+    :param notify_file      Name of the notifications file.
+    :param block_file       Name of the blocks notification file.
+    :return: Lists created from the files.
+    """
+    addresses = read_addresses(addresses_file)
+    connects = read_connect(connect_file)
+    notifies = read_notify(notify_file)
+    blocks = read_blocks(block_file)
+
+    return addresses, connects, notifies, blocks
+
+
+def read_addresses(addresses_file):
+    """
+    Turns the adresses files from log_filter.py into usable list.
+
+    :param addresses_file   Name of the ip adresses file.
+    :return: List created from the file.
+    """
     with open(addresses_file, "r") as file:
         csv_read = csv.reader(file)
         next(csv_read)
         addresses = []
         for row in csv_read:
             addresses.append(row[0])
+        return addresses
 
+
+def read_connect(connect_file):
+    """
+    Turns the connection file from log_filter.py into usable list.
+
+    :param connect_file     Name of the connections file.
+    :return: List created from the file.
+    """
     with open(connect_file, "r") as file:
         csv_read = csv.reader(file)
         ips = []
@@ -138,21 +194,32 @@ def read_log_filter(addresses_file, connect_file, notify_file, block_file):
             connections.append(row[1])
             disconnections.append(row[2])
             reasons.append(row[3])
-        connects = list(zip(ips, connections, disconnections, reasons))
+        return list(zip(ips, connections, disconnections, reasons))
 
+
+def read_notify(notify_file):
+    """
+    Turns the notification file from log_filter.py into usable list.
+
+    :param notify_file      Name of the notifications file.
+    :return: List created from the file.
+    """
     with open(notify_file, "r") as file:
         csv_read = csv.reader(file)
         next(csv_read)
         notifies = []
         for row in csv_read:
             notifies.append(row[0])
-
-    blocks = read_blocks(block_file)
-
-    return addresses, connects, notifies, blocks
+        return notifies
 
 
 def read_blocks(block_file):
+    """
+    Turns the block notification file from log_filter.py into usable list.
+
+    :param block_file       Name of the blocks notification file.
+    :return: List created from the file.
+    """
     with open(block_file, "r") as file:
         csv_read = csv.reader(file)
         ips = []
@@ -167,6 +234,14 @@ def read_blocks(block_file):
 
 
 def plot_location_data(addresses, ipinfos, worldmap):
+    """
+    Creates and saves the World Map
+
+    :param addresses    List containing the IP Adresses
+    :param ipinfos      ?? <-UPDATE
+    :param worldmap     Location of the World Map file.
+    :return: None
+    """
     locs = {}
 
     m = folium.Map(location=[20, 0], tiles="Mapbox Bright", zoom_start=2)
@@ -174,7 +249,7 @@ def plot_location_data(addresses, ipinfos, worldmap):
 
     for address in addresses:
         info = ipinfos[address.split(":")[0]]
-        if "country" in info and "loc" in info and info["category"] == None:
+        if "country" in info and "loc" in info and info["category"] is None:
             loc = info["country"]
             if loc not in locs:
                 locs[loc] = 0
@@ -216,10 +291,10 @@ def plot_location_data(addresses, ipinfos, worldmap):
 
     m.save("conn_origins.html")
 
-    N = np.arange(len(locs.keys()))
+    n = np.arange(len(locs.keys()))
     plt.figure(figsize=(30, 5))
-    plt.bar(N, locs.values())
-    plt.xticks(N, locs.keys())
+    plt.bar(n, locs.values())
+    plt.xticks(n, locs.keys())
     plt.xlabel("Country")
     plt.ylabel("Number of connections")
     plt.title("Origins of connections")
@@ -227,6 +302,12 @@ def plot_location_data(addresses, ipinfos, worldmap):
 
 
 def plot_blocks_redundancy(blocks):
+    """
+    Creates and saves the Block Redundancy plot.
+
+    :param blocks   List containing the block notifications.
+    :return: None
+    """
     block_heights = {}
     for block in blocks:
         if block[2] not in block_heights:
@@ -244,7 +325,9 @@ def plot_blocks_redundancy(blocks):
 
 def main():
     """
-    Given the result files from log_filter, calculate useful statistics
+    Given the result files from log_filter, calculate useful statistics and create useful plots.
+
+    Usage: python3 stats.py input_file1.csv input_file2.csv ...
     """
     addresses_file = sys.argv[1]
     connect_file = sys.argv[2]
@@ -258,8 +341,6 @@ def main():
         worldmap = sys.argv[8]
     update_tor_exit_nodes(tor_ip_file)
 
-    reason_filter = None
-
     (addresses, connects, notifies, blocks) = read_log_filter(addresses_file, connect_file, notify_file, block_file)
     ipinfos = get_ip_info(addresses, monero_ip_file, tor_ip_file, ip_info_file)
 
@@ -268,11 +349,11 @@ def main():
     print(conn_types)
 
     with open("conn_types.txt", "w+") as file:
-        file.write(str(conn_types) + "\n");
+        file.write(str(conn_types) + "\n")
 
-    plot_connection_length(connects, reason_filter)
+    plot_connection_length(connects)
     plot_notification(notifies)
-    plot_connection_timeline(connects, reason_filter)
+    plot_connection_timeline(connects)
     plot_blocks_redundancy(blocks)
     plot_location_data(addresses, ipinfos, worldmap)
 
