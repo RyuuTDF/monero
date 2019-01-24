@@ -1,5 +1,7 @@
 import sys
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 from log_filter import write_file
 from itertools import combinations
 
@@ -27,7 +29,27 @@ def calculate_block_deltas(input_first, input_second):
 
     merged = pd.merge(df_first, df_second, on="block-height")
     merged["difference"] = merged.timestamp_first - merged.timestamp_second
+
+    plot_block_deltas(merged)
+
     return zip(merged.index, merged.timestamp_first - merged.timestamp_second)
+
+
+def plot_block_deltas(dataframe):
+    """
+    Plot the differences between block arrival times from an input dataframe.
+    The plots created are a boxplot and a histogram that has edges -2 and 2.
+
+    :param dataframe:   Dataframe to be plotted, must have a column difference made by calculate_block_deltas.
+    :return:
+    """
+    plotdata = dataframe.difference.dt.total_seconds()
+    histogram = plotdata[plotdata.between(-2, 2)]
+
+    sns.boxplot(y=plotdata)
+    plt.figure()
+    plt.hist(histogram, bins=200)
+    plt.show()
 
 
 def main():
@@ -42,9 +64,8 @@ def main():
     For each pair of input_files, a CSV file is created using the following naming scheme:
         input_fileX.csv, input_fileY.csv => XvsY.csv
     """
-    output_file = sys.argv[1]
     input_files = []
-    for index in range(2, len(sys.argv)):
+    for index in range(1, len(sys.argv)):
         input_files.append(sys.argv[index])
 
     for pair in combinations(input_files, 2):
