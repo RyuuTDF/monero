@@ -13,6 +13,13 @@ from ipinfo import get_ip_info, update_tor_exit_nodes
 
 
 def connection_types(connects, ipinfos):
+    """
+    Splits connections made into three categories and calculates amount of connections per category.
+
+    :param connects     List containing connect and disconnect notifications.
+    :param ipinfos      Information about the IP addresses, including their category.
+    :return Hash map that maps the types of connections to the amount of their occurrences.
+    """
     ips = set()
 
     types = {}
@@ -33,7 +40,7 @@ def connection_length(connects):
     Calculates the duration of all connections made.
 
     :param connects     List containing connect and disconnect notifications.
-    :return: None
+    :return: Hash map of IP addresses mapped to the list of their connection lengths.
     """
     connection_lengths = {}
     for (ip, connection, disconnection, reason) in connects:
@@ -238,7 +245,7 @@ def plot_location_data(addresses, ipinfos, worldmap):
     Creates and saves the World Map
 
     :param addresses    List containing the IP Adresses
-    :param ipinfos      ?? <-UPDATE
+    :param ipinfos      Information about the IP addresses, including their geolocation
     :param worldmap     Location of the World Map file.
     :return: None
     """
